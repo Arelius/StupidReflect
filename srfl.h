@@ -1,9 +1,13 @@
 #ifndef SRFL_H
 #define SRFL_H
 
-#ifndef SRFL_SUPPORT_POINTER
-#define SRFL_SUPPORT_POINTER 0
-#endif
+#ifndef SRFL_SUPPORT_POINTERS
+#define SRFL_SUPPORT_POINTERS 0
+#endif //SRFL_SUPPORT_POINTERS
+
+#ifndef SRFL_LATE_LINK_POINTERS
+#define SRFL_LATE_LINK_POINTERS 1
+#endif //SRFL_LATE_LINK_POINTERS
 
 struct srfl_info;
 struct srfl_member;
@@ -32,9 +36,9 @@ struct srfl_type
     size_t size;
     srfl_member* members;
     srfl_info* infos;
-#if SRFL_SUPPORT_POINTER
+#if SRFL_SUPPORT_POINTERS
     srfl_type* ptrType;
-#endif //SRFL_SUPPORT_POINTER
+#endif //SRFL_SUPPORT_POINTERS
 };
 
 #endif //SRFL_H

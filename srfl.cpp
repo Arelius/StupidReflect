@@ -4,7 +4,12 @@
 
 srfl_type* srfl_types_head = 0;
 
-#if SRFL_SUPPORT_POINTER
+void srfl_link_type(srfl_type* type) {
+    type->next = srfl_types_head;
+    srfl_types_head = type;
+}
+
+#if SRFL_SUPPORT_POINTERS
 
 #include <string.h>
 
@@ -19,6 +24,12 @@ unsigned int srfl_count_ptr(const char* name, size_t len) {
 srfl_type* srfl_get_pointer_type(srfl_type* type, unsigned int indrs) {
     while(type->ptrType && indrs > 0) {
         type = type->ptrType;
+#if SRFL_LATE_LINK_POINTERS
+        // This check is valid because we link the base type first, so this will
+        // never be null so long as it's linked into the list.
+        if(type->next == 0)
+            srfl_link_type(type);
+#endif //SRFL_LATE_LINK_POINTERS
         indrs--;
     }
     return type;
@@ -40,31 +51,32 @@ srfl_type* srfl_get_meta_type(const char* name, size_t len) {
 
 #define SRFL_GET_TYPE(typ) srfl_get_meta_type(#typ, sizeof(#typ))
 
-#else //SRFL_SUPPORT_POINTER
+#else //SRFL_SUPPORT_POINTERS
 
 #define SRFL_GET_TYPE(typ) get_meta_##typ()
 
-#endif //SRFL_SUPPORT_POINTER
+#endif //SRFL_SUPPORT_POINTERS
 
-void srfl_init_type(srfl_type* type, const char* name, size_t size) {
+void srfl_init_type(srfl_type* type, const char* name, size_t size, bool lateLink = false) {
     type->next = 0;
     type->name = name;
     type->size = size;
     type->members = 0;
     type->infos = 0;
-#if SRFL_SUPPORT_POINTER
+#if SRFL_SUPPORT_POINTERS
     type->ptrType = 0;
-#endif //SRFL_SUPPORT_POINTER
-    type->next = srfl_types_head;
-    srfl_types_head = type;
+#endif //SRFL_SUPPORT_POINTERS
+    if(!lateLink)
+        srfl_link_type(type);
 }
 
 #define STR(a) #a
+#define EXP(a) a
 
 #define SRFL_DECLARE_TYPE(typ) \
 srfl_type* get_meta_##typ();
 
-#if SRFL_SUPPORT_POINTER
+#if SRFL_SUPPORT_POINTERS
 
 #define _SRFL_DEFINE_STATICS() \
     static srfl_type type = {}; \
@@ -73,8 +85,8 @@ srfl_type* get_meta_##typ();
 
 #define _SRFL_DEFINE_INIT_TYPES(typ) \
     srfl_init_type(&type, #typ, sizeof(typ)); \
-    srfl_init_type(&ptrType, STR(typ ## *), sizeof(typ*)); \
-    srfl_init_type(&ptrPtrType, STR(typ ## **), sizeof(typ**)); \
+    srfl_init_type(&ptrType, STR(typ ## *), sizeof(typ*), EXP(SRFL_LATE_LINK_POINTERS)); \
+    srfl_init_type(&ptrPtrType, STR(typ ## **), sizeof(typ**), EXP(SRFL_LATE_LINK_POINTERS)); \
     ptrType.ptrType = &ptrPtrType; \
     type.ptrType = &ptrType;
 
@@ -122,7 +134,7 @@ void init_meta_##typ(srfl_type* type, srfl_member* member, srfl_info** ppinfo, t
     *ppinfo = &info; \
 }
       
-SRFL_DEFINE_TYPE(int) {}   
+SRFL_DEFINE_TYPE(int) {}
 
 SRFL_DEFINE_TYPE(float) {}
 
@@ -133,9 +145,9 @@ struct Foo {
 };
 
 SRFL_DEFINE_TYPE(Foo) {
-#if SRFL_SUPPORT_POINTER
+#if SRFL_SUPPORT_POINTERS
     SRFL_MEMBER(Foo*, next);
-#endif
+#endif //SRFL_SUPPORT_POINTERS
     SRFL_MEMBER(float, x);
     SRFL_MEMBER(int, y) {
         SRFL_INFO(range, 0 - 2);
