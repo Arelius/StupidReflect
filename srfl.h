@@ -23,15 +23,21 @@
 #define SRFL_ASSERT(cond)
 #endif
 
+struct srfl_value;
 struct srfl_info;
 struct srfl_member;
 struct srfl_type;
 
+struct srfl_value
+{
+    srfl_value* next;
+    const char* value;
+};
+
 struct srfl_info
 {
     srfl_info* next;
-    const char* key;
-    const char* value;
+    srfl_value* value;
 };
 
 struct srfl_member
@@ -66,6 +72,7 @@ struct srfl_type
 srfl_type* get_meta_##typ();
 
 #if SRFL_SUPPORT_POINTERS && SRFL_REFLECT_OWN_TYPES
+SRFL_DECLARE_TYPE(srfl_value);
 SRFL_DECLARE_TYPE(srfl_info);
 SRFL_DECLARE_TYPE(srfl_member);
 SRFL_DECLARE_TYPE(srfl_type);

@@ -135,14 +135,59 @@ void init_meta_##typ(srfl_type* type, srfl_member* member, srfl_info** ppinfo, t
     type->members = member; \
 } if(srfl_info** ppinfo = &member->infos)
 
-#define SRFL_INFO(ky, vl) { \
+#define SRFL_VALUE(vl) { \
+    static srfl_value val; \
+    val.next = 0; \
+    val.value = #vl; \
+    val.next = info.value; \
+    info.value = &val; \
+}
+
+#define SRFL_EXPAND(x) x
+
+#define SRFL_VAL_ONE(v1, ...) \
+    SRFL_VALUE(v1)
+
+#define SRFL_VAL_TWO(v1, v2, ...) \
+    SRFL_VALUE(v2) \
+    SRFL_VALUE(v1)
+
+#define SRFL_VAL_THREE(v1, v2, v3, ...) \
+    SRFL_VALUE(v3) \
+    SRFL_VALUE(v2) \
+    SRFL_VALUE(v1)
+
+#define SRFL_VAL_FOUR(v1, v2, v3, v4, ...) \
+    SRFL_VALUE(v4) \
+    SRFL_VALUE(v3) \
+    SRFL_VALUE(v2) \
+    SRFL_VALUE(v1)
+
+#define SRFL_VAL_FIVE(v1, v2, v3, v4, v5, ...)   \
+    SRFL_VALUE(v5) \
+    SRFL_VALUE(v4) \
+    SRFL_VALUE(v3) \
+    SRFL_VALUE(v2) \
+    SRFL_VALUE(v1)
+
+#define SRFL_VAL_NUM2(num, ...) SRFL_EXPAND(SRFL_VAL_##num(__VA_ARGS__))
+#define SRFL_VAL_NUM(num, ...) SRFL_VAL_NUM2(num, __VA_ARGS__)
+
+#define SRFL_NUM(_1, _2, _3, _4, _5, _6, ...) _6
+
+#define SRFL_VALS2(...) \
+   SRFL_EXPAND(SRFL_VAL_NUM(SRFL_NUM(__VA_ARGS__), __VA_ARGS__))
+
+#define SRFL_VALS(...) \
+   SRFL_EXPAND(SRFL_VALS2(__VA_ARGS__, FIVE, FOUR, THREE, TWO, ONE, NONE))
+
+#define SRFL_INFO(...) {   \
     static srfl_info info; \
-    info.key = #ky; \
-    info.value = #vl; \
+    SRFL_VALS(__VA_ARGS__) \
     info.next = *ppinfo; \
     *ppinfo = &info; \
 }
-      
+
 SRFL_DEFINE_TYPE(int) {}
 SRFL_DEFINE_TYPE(float) {}
 SRFL_DEFINE_TYPE(char) {}
@@ -152,6 +197,9 @@ struct Foo {
     Foo* next;
     float x;
     int y;
+    int _1;
+    int _2;
+    int _3;
 };
 
 SRFL_DEFINE_TYPE(Foo) {
@@ -163,28 +211,38 @@ SRFL_DEFINE_TYPE(Foo) {
         SRFL_INFO(range, 0 - 2);
         SRFL_INFO(notes, Funny);
     }
+    SRFL_MEMBER(int, _1) {
+        SRFL_INFO(one);
+    }
+    SRFL_MEMBER(int, _2) {
+        SRFL_INFO(two, 2);
+    }
+    SRFL_MEMBER(int, _3) {
+        SRFL_INFO(these, three, things);
+    }
     SRFL_INFO(author, indy);
 }
 
 #if SRFL_SUPPORT_POINTERS && SRFL_REFLECT_OWN_TYPES
+SRFL_DEFINE_TYPE(srfl_value) {
+    SRFL_MEMBER(srfl_value*, next);
+    SRFL_MEMBER(char*, value) {
+        SRFL_INFO(const);
+        SRFL_INFO(null_terminated);
+    }
+}
+
 SRFL_DEFINE_TYPE(srfl_info) {
     SRFL_MEMBER(srfl_info*, next);
-    SRFL_MEMBER(char*, key) {
-        //SRFL_INFO(const);
-        //SRFL_INFO(null_terminated);
-    }
-    SRFL_MEMBER(char*, value) {
-        //SRFL_INFO(const);
-        //SRFL_INFO(null_terminated);
-    }
+    SRFL_MEMBER(srfl_value*, value);
 }
 
 SRFL_DEFINE_TYPE(srfl_member) {
     SRFL_MEMBER(srfl_member*, next);
     SRFL_MEMBER(srfl_type*, type);
     SRFL_MEMBER(char*, name) {
-        //SRFL_INFO(const);
-        //SRFL_INFO(null_terminated);
+        SRFL_INFO(const);
+        SRFL_INFO(null_terminated);
     }
     SRFL_MEMBER(size_t, offset);
     SRFL_MEMBER(srfl_info*, infos);
@@ -193,8 +251,8 @@ SRFL_DEFINE_TYPE(srfl_member) {
 SRFL_DEFINE_TYPE(srfl_type) {
     SRFL_MEMBER(srfl_type*, next);
     SRFL_MEMBER(char*, name) {
-        //SRFL_INFO(const);
-        //SRFL_INFO(null_terminated);
+        SRFL_INFO(const);
+        SRFL_INFO(null_terminated);
     }
     SRFL_MEMBER(srfl_member*, members);
     SRFL_MEMBER(srfl_info*, infos);
@@ -215,10 +273,32 @@ void srfl_init_meta_types()
 }
 #endif //SRFL_DEFER_MEMBERS
 
+void srfl_init_types()
+{
+#if SRFL_DEFER_MEMBERS
+    srfl_init_meta_types();
+#endif //SRFL_DEFER_MEMBERS
+}
+
 #include <stdio.h>
 
 void srfl_print_info(srfl_info* info, int indent = 0) {
-    printf("%*sInfo \"%s\" : \"%s\"\n", indent, "", info->key, info->value);
+    SRFL_ASSERT(info->value);
+    if(!info->value->next) {
+        printf("%*sInfo \"%s\"\n", indent, "", info->value->value);
+    }
+    else if(info->value && info->value->next && ! info->value->next->next) {
+        printf("%*sInfo \"%s\" : \"%s\"\n", indent, "", info->value->value, info->value->next->value);
+    }
+    else {
+        printf("%*sBegin Info \"%s\"\n", indent, "", info->value->value);
+        srfl_value* value = info->value->next;;
+        while(value) {
+            printf("%*s\"%s\"\n", indent+2, "", value->value);
+            value = value->next;
+        }
+        printf("%*sEnd Info \"%s\"\n", indent, "", info->value->value);
+    }
 }
 
 void srfl_print_infos(srfl_info* infos, int indent = 0) {
@@ -258,9 +338,7 @@ void srfl_print_types(srfl_type* types, int indent = 0) {
 }
 
 int main(int argc, const char** argv) {
-#if SRFL_DEFER_MEMBERS
-    srfl_init_meta_types();
-#endif //SRFL_DEFER_MEMBERS
+    srfl_init_types();
     srfl_print_types(srfl_types_head);
     return 0;
 }
