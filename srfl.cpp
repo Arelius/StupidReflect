@@ -101,6 +101,14 @@ void srfl_init_type(srfl_type* type, const char* name, size_t size, bool lateLin
 
 #endif //SRFL_SUPPORT_POINTERS
 
+#if SRFL_DEFER_MEMBERS
+#define INIT_META(typ) \
+    type.init_meta = (init_meta_fn)init_meta_##typ;
+#else //SRFL_DEFER_MEMBERS
+#define INIT_META(typ) \
+    init_meta_##typ(&type, type.members, &type.infos, (typ*)0);
+#endif //SRFL_DEFER_MEMBERS
+
 #define SRFL_DEFINE_TYPE(typ) \
 void init_meta_##typ(srfl_type* type, srfl_member* member, srfl_info** ppinfo, typ* dummy); \
 srfl_type* get_meta_ ## typ () { \
@@ -109,7 +117,7 @@ srfl_type* get_meta_ ## typ () { \
     if(ptype) return ptype; \
     ptype = &type; \
     _SRFL_DEFINE_INIT_TYPES(typ) \
-    init_meta_##typ(&type, type.members, &type.infos, (typ*)0);   \
+    INIT_META(typ) \
     return ptype;  \
 } \
 static srfl_type* _static_meta_##typ = get_meta_##typ(); \
@@ -196,6 +204,17 @@ SRFL_DEFINE_TYPE(srfl_type) {
 }
 #endif
 
+#if SRFL_DEFER_MEMBERS
+void srfl_init_meta_types()
+{
+    srfl_type* type = srfl_types_head;
+    while(type) {
+        type->init_meta(type, type->members, &type->infos, 0);
+        type = type->next;
+    }
+}
+#endif //SRFL_DEFER_MEMBERS
+
 #include <stdio.h>
 
 void srfl_print_info(srfl_info* info, int indent = 0) {
@@ -239,6 +258,9 @@ void srfl_print_types(srfl_type* types, int indent = 0) {
 }
 
 int main(int argc, const char** argv) {
+#if SRFL_DEFER_MEMBERS
+    srfl_init_meta_types();
+#endif //SRFL_DEFER_MEMBERS
     srfl_print_types(srfl_types_head);
     return 0;
 }

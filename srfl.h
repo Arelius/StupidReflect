@@ -9,6 +9,12 @@
 #define SRFL_LATE_LINK_POINTERS 1
 #endif //SRFL_LATE_LINK_POINTERS
 
+#define SRFL_RECURSIVE_TYPES SRFL_SUPPORT_POINTERS
+
+#ifndef SRFL_DEFER_MEMBERS
+#define SRFL_DEFER_MEMBERS SRFL_RECURSIVE_TYPES
+#endif
+
 #ifndef SRFL_REFLECT_OWN_TYPES
 #define SRFL_REFLECT_OWN_TYPES 1
 #endif
@@ -37,6 +43,10 @@ struct srfl_member
     srfl_info* infos;
 };
 
+#if SRFL_DEFER_MEMBERS
+typedef void (*init_meta_fn)(srfl_type* type, srfl_member* member, srfl_info** ppinfo, void* dummy);
+#endif //SRFL_DEFER_MEMBERS
+
 struct srfl_type
 {
     srfl_type* next;
@@ -47,6 +57,9 @@ struct srfl_type
 #if SRFL_SUPPORT_POINTERS
     srfl_type* ptrType;
 #endif //SRFL_SUPPORT_POINTERS
+#if SRFL_DEFER_MEMBERS
+    init_meta_fn init_meta;
+#endif //SRFL_DEFER_MEMBERS
 };
 
 #define SRFL_DECLARE_TYPE(typ) \
