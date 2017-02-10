@@ -9,6 +9,14 @@
 #define SRFL_LATE_LINK_POINTERS 1
 #endif //SRFL_LATE_LINK_POINTERS
 
+#ifndef SRFL_REFLECT_OWN_TYPES
+#define SRFL_REFLECT_OWN_TYPES 1
+#endif
+
+#ifndef SRFL_ASSERT
+#define SRFL_ASSERT(cond)
+#endif
+
 struct srfl_info;
 struct srfl_member;
 struct srfl_type;
@@ -40,5 +48,14 @@ struct srfl_type
     srfl_type* ptrType;
 #endif //SRFL_SUPPORT_POINTERS
 };
+
+#define SRFL_DECLARE_TYPE(typ) \
+srfl_type* get_meta_##typ();
+
+#if SRFL_SUPPORT_POINTERS && SRFL_REFLECT_OWN_TYPES
+SRFL_DECLARE_TYPE(srfl_info);
+SRFL_DECLARE_TYPE(srfl_member);
+SRFL_DECLARE_TYPE(srfl_type);
+#endif
 
 #endif //SRFL_H

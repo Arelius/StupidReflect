@@ -15,7 +15,7 @@ void srfl_link_type(srfl_type* type) {
 
 unsigned int srfl_count_ptr(const char* name, size_t len) {
     unsigned int r = 0;
-    for(size_t i = len-2; i >= 0 && name[i] == '*'; i--)
+    for(size_t i = len-1; i >= 0 && name[i] == '*'; i--)
         r++;
     return r;
 }
@@ -37,15 +37,19 @@ srfl_type* srfl_get_pointer_type(srfl_type* type, unsigned int indrs) {
 
 // Should probably build an index.
 srfl_type* srfl_get_meta_type(const char* name, size_t len) {
+    len = len - 1;
     unsigned int indrs = srfl_count_ptr(name, len);
     if(indrs)
-        len = len - 1 - indrs;
+        len = len- indrs;
     srfl_type* rootType = 0;
     for(srfl_type* type = srfl_types_head; type; type = type->next) {
-        if(strncmp(type->name, name, len) == 0)
+        if((strlen(type->name) == len) && strncmp(type->name, name, len) == 0) {
             rootType = type;
+            break;
+        }
     }
     rootType = srfl_get_pointer_type(rootType, indrs);
+    SRFL_ASSERT(rootType);
     return rootType;
 }
 
@@ -72,9 +76,6 @@ void srfl_init_type(srfl_type* type, const char* name, size_t size, bool lateLin
 
 #define STR(a) #a
 #define EXP(a) a
-
-#define SRFL_DECLARE_TYPE(typ) \
-srfl_type* get_meta_##typ();
 
 #if SRFL_SUPPORT_POINTERS
 
@@ -135,8 +136,9 @@ void init_meta_##typ(srfl_type* type, srfl_member* member, srfl_info** ppinfo, t
 }
       
 SRFL_DEFINE_TYPE(int) {}
-
 SRFL_DEFINE_TYPE(float) {}
+SRFL_DEFINE_TYPE(char) {}
+SRFL_DEFINE_TYPE(size_t) {}
 
 struct Foo {
     Foo* next;
@@ -155,6 +157,44 @@ SRFL_DEFINE_TYPE(Foo) {
     }
     SRFL_INFO(author, indy);
 }
+
+#if SRFL_SUPPORT_POINTERS && SRFL_REFLECT_OWN_TYPES
+SRFL_DEFINE_TYPE(srfl_info) {
+    SRFL_MEMBER(srfl_info*, next);
+    SRFL_MEMBER(char*, key) {
+        //SRFL_INFO(const);
+        //SRFL_INFO(null_terminated);
+    }
+    SRFL_MEMBER(char*, value) {
+        //SRFL_INFO(const);
+        //SRFL_INFO(null_terminated);
+    }
+}
+
+SRFL_DEFINE_TYPE(srfl_member) {
+    SRFL_MEMBER(srfl_member*, next);
+    SRFL_MEMBER(srfl_type*, type);
+    SRFL_MEMBER(char*, name) {
+        //SRFL_INFO(const);
+        //SRFL_INFO(null_terminated);
+    }
+    SRFL_MEMBER(size_t, offset);
+    SRFL_MEMBER(srfl_info*, infos);
+}
+
+SRFL_DEFINE_TYPE(srfl_type) {
+    SRFL_MEMBER(srfl_type*, next);
+    SRFL_MEMBER(char*, name) {
+        //SRFL_INFO(const);
+        //SRFL_INFO(null_terminated);
+    }
+    SRFL_MEMBER(srfl_member*, members);
+    SRFL_MEMBER(srfl_info*, infos);
+#ifdef SRFL_SUPPORT_POINTERS
+    SRFL_MEMBER(srfl_type*, ptrType);
+#endif //SRFL_SUPPORT_POINTERS
+}
+#endif
 
 #include <stdio.h>
 
