@@ -1,6 +1,10 @@
 #ifndef SRFL_H
 #define SRFL_H
 
+#ifndef SRFL_SUPPORT_POINTER
+#define SRFL_SUPPORT_POINTER 0
+#endif
+
 struct srfl_info;
 struct srfl_member;
 struct srfl_type;
@@ -28,6 +32,9 @@ struct srfl_type
     size_t size;
     srfl_member* members;
     srfl_info* infos;
+#if SRFL_SUPPORT_POINTER
+    srfl_type* ptrType;
+#endif //SRFL_SUPPORT_POINTER
 };
 
 #endif //SRFL_H
