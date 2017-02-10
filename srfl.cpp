@@ -15,6 +15,7 @@ srfl_type* get_meta_ ## typ () { \
     static srfl_type type = {}; \
     static srfl_type* ptype = nullptr; \
     if(ptype) return ptype; \
+    ptype = &type; \
     type.next = 0; \
     type.name = #typ; \
     type.size = sizeof(typ); \
@@ -23,7 +24,6 @@ srfl_type* get_meta_ ## typ () { \
     type.next = srfl_types_head; \
     srfl_types_head = &type; \
     init_meta_##typ(&type, type.members, &type.infos, (typ*)0);   \
-    ptype = &type; \
     return ptype;  \
 } \
 static srfl_type* _static_meta_##typ = get_meta_##typ(); \
